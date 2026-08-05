@@ -1,6 +1,17 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { getUser, clearAuth } from "../utils/auth";
 
 function Sidebar() {
+  const navigate = useNavigate();
+  const user = getUser();
+  const isStaff = user?.role === "faculty" || user?.role === "admin";
+  const isAdmin = user?.role === "admin";
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate("/login");
+  };
+
   return (
     <aside className="sidebar">
 
@@ -12,12 +23,32 @@ function Sidebar() {
       <nav className="sidebar-nav">
 
         <NavLink
-          to="/student-dashboard"
+          to={isAdmin ? "/admin-panel" : isStaff ? "/faculty-dashboard" : "/student-dashboard"}
           className="sidebar-link"
         >
           <span>🏠</span>
           Dashboard
         </NavLink>
+
+        {isStaff && (
+          <NavLink
+            to="/faculty-dashboard"
+            className="sidebar-link"
+          >
+            <span>🧑‍🏫</span>
+            Faculty Panel
+          </NavLink>
+        )}
+
+        {isAdmin && (
+          <NavLink
+            to="/admin-panel"
+            className="sidebar-link"
+          >
+            <span>🛠️</span>
+            Admin Panel
+          </NavLink>
+        )}
 
         <NavLink
           to="/notices"
@@ -91,7 +122,7 @@ function Sidebar() {
           ⚙️ Settings
         </button>
 
-        <button className="sidebar-logout">
+        <button className="sidebar-logout" onClick={handleLogout}>
           🚪 Logout
         </button>
 

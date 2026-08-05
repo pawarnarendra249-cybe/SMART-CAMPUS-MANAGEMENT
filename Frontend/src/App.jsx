@@ -14,6 +14,10 @@ import Timetable from "./pages/Timetable";
 import Placements from "./pages/Placements";
 import Complaints from "./pages/Complaints";
 import Profile from "./pages/Profile";
+import FacultyDashboard from "./pages/FacultyDashboard";
+import AdminPanel from "./pages/AdminPanel";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import RoleRoute from "./routes/RoleRoute";
 
 function App() {
   return (
@@ -24,37 +28,96 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+
+        {/* Protected routes - require login */}
         <Route
-  path="/student-dashboard"
-  element={<StudentDashboard />}
-/>
-<Route path="/notices" element={<Notices />} />
-<Route path="/events" element={<Events />} />
-<Route
-  path="/study-materials"
-  element={<StudyMaterials />}
-/>
-<Route
-  path="/attendance"
-  element={<Attendance />}
-/>
-<Route
-  path="/timetable"
-  element={<Timetable />}
-/>
-<Route
-  path="/placements"
-  element={<Placements />}
-/>
-<Route
-  path="/complaints"
-  element={<Complaints />}
-/>
-<Route
-  path="/profile"
-  element={<Profile />}
-/>
-     
+          path="/student-dashboard"
+          element={
+            <ProtectedRoute>
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notices"
+          element={
+            <ProtectedRoute>
+              <Notices />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events"
+          element={
+            <ProtectedRoute>
+              <Events />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/study-materials"
+          element={
+            <ProtectedRoute>
+              <StudyMaterials />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/attendance"
+          element={
+            <ProtectedRoute>
+              <Attendance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/timetable"
+          element={
+            <ProtectedRoute>
+              <Timetable />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/placements"
+          element={
+            <ProtectedRoute>
+              <Placements />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/complaints"
+          element={
+            <ProtectedRoute>
+              <Complaints />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faculty-dashboard"
+          element={
+            <RoleRoute allowedRoles={["faculty", "admin"]}>
+              <FacultyDashboard />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin-panel"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <AdminPanel />
+            </RoleRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

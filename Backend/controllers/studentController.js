@@ -1,4 +1,5 @@
 const StudentProfile = require("../models/StudentProfile");
+const User = require("../models/User");
 
 // ==========================================
 // CREATE STUDENT PROFILE
@@ -173,6 +174,62 @@ const updateMyStudentProfile = async (req, res) => {
 };
 
 // ==========================================
+// DELETE MY STUDENT PROFILE
+// ==========================================
+
+const deleteMyStudentProfile = async (req, res) => {
+  try {
+    // Find logged-in student's profile
+    const profile = await StudentProfile.findOne({
+      user: req.user.id,
+    });
+
+    // If profile not found
+    if (!profile) {
+      return res.status(404).json({
+        message: "Student profile not found",
+      });
+    }
+
+    await StudentProfile.deleteOne({ _id: profile._id });
+
+    res.status(200).json({
+      message: "Student profile deleted successfully",
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// GET ALL STUDENTS (Faculty / Admin only)
+// ==========================================
+// Lightweight list used by faculty/admin UIs (e.g. the attendance-marking
+// dropdown) to pick which student they're acting on.
+
+const getAllStudents = async (req, res) => {
+  try {
+    const students = await User.find({ role: "student" })
+      .select("name email")
+      .sort({ name: 1 });
+
+    res.status(200).json({
+      message: "Students fetched successfully",
+      students,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
 // EXPORT FUNCTIONS
 // ==========================================
 
@@ -180,4 +237,6 @@ module.exports = {
   createStudentProfile,
   getMyStudentProfile,
   updateMyStudentProfile,
+  deleteMyStudentProfile,
+  getAllStudents,
 };

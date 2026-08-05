@@ -1,575 +1,346 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "../components/DashboardLayout";
+import { getUser } from "../utils/auth";
+import {
+  getMyProfile,
+  createMyProfile,
+  updateMyProfile,
+  deleteMyProfile,
+} from "../services/studentService";
+
+// Fields that actually exist in the backend StudentProfile model.
+// (CGPA / attendance % / skills are UI placeholders until those
+// modules — Academics/Attendance — are built on the backend.)
+const emptyForm = {
+  studentId: "",
+  phone: "",
+  department: "",
+  branch: "",
+  semester: "",
+  division: "",
+  address: "",
+};
 
 function Profile() {
+  const currentUser = getUser(); // { id, name, email, role } from login
+
+  const [loading, setLoading] = useState(true);
+  const [profileExists, setProfileExists] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+  const [formData, setFormData] = useState(emptyForm);
 
-  const [profile, setProfile] = useState({
-    firstName: "Narendra",
-    lastName: "Pawar",
-    email: "narendra@example.com",
-    phone: "+91 98765 43210",
-    studentId: "CSE2026001",
-    department: "Computer Engineering",
-    semester: "4th Semester",
-    division: "A",
-    cgpa: "8.2",
-    joinedYear: "2024",
-  });
+  async function loadProfile() {
+    setLoading(true);
+    setError("");
 
-  const [skills, setSkills] = useState([
-    "React.js",
-    "JavaScript",
-    "Node.js",
-    "MongoDB",
-    "Python",
-    "Cloud Computing",
-  ]);
+    try {
+      const data = await getMyProfile();
+      const p = data.profile;
 
-  const [newSkill, setNewSkill] = useState("");
+      setFormData({
+        studentId: p.studentId || "",
+        phone: p.phone || "",
+        department: p.department || "",
+        branch: p.branch || "",
+        semester: p.semester || "",
+        division: p.division || "",
+        address: p.address || "",
+      });
+
+      setProfileExists(true);
+    } catch (err) {
+      if (err.status === 404) {
+        // No profile yet -> show the create form
+        setProfileExists(false);
+        setIsEditing(true);
+      } else {
+        setError(err.message || "Could not load profile");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setProfile({
-      ...profile,
-      [name]: value,
-    });
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    alert("Profile updated successfully!");
-  };
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
 
-  const addSkill = () => {
-    if (
-      newSkill.trim() !== "" &&
-      !skills.includes(newSkill.trim())
-    ) {
-      setSkills([
-        ...skills,
-        newSkill.trim(),
-      ]);
-
-      setNewSkill("");
+    try {
+      if (profileExists) {
+        await updateMyProfile(formData);
+      } else {
+        await createMyProfile(formData);
+        setProfileExists(true);
+      }
+      setIsEditing(false);
+    } catch (err) {
+      setError(err.message || "Could not save profile");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const removeSkill = (skillToRemove) => {
-    setSkills(
-      skills.filter(
-        (skill) => skill !== skillToRemove
-      )
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your student profile? This cannot be undone."
     );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError("");
+
+    try {
+      await deleteMyProfile();
+      setFormData(emptyForm);
+      setProfileExists(false);
+      setIsEditing(true);
+    } catch (err) {
+      setError(err.message || "Could not delete profile");
+    } finally {
+      setDeleting(false);
+    }
   };
+
+  const initials = currentUser?.name
+    ? currentUser.name
+        .split(" ")
+        .map((w) => w.charAt(0))
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "??";
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <p style={{ padding: "2rem" }}>Loading profile...</p>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-
       <div className="profile-page">
+        {error && (
+          <p className="auth-error" style={{ color: "red" }}>
+            {error}
+          </p>
+        )}
 
-        {/* =================================
+        {/* ================================= 
             PROFILE HERO
         ================================= */}
 
         <div className="profile-hero">
-
           <div className="profile-hero-content">
-
-            <div className="profile-avatar">
-              {profile.firstName.charAt(0)}
-              {profile.lastName.charAt(0)}
-            </div>
+            <div className="profile-avatar">{initials}</div>
 
             <div className="profile-identity">
-
-              <h1>
-                {profile.firstName}{" "}
-                {profile.lastName}
-              </h1>
-
-              <p>
-                {profile.department}
-              </p>
-
+              <h1>{currentUser?.name || "Your Name"}</h1>
+              <p>{formData.department || "Department not set"}</p>
               <span>
-                Student ID: {profile.studentId}
+                Student ID: {formData.studentId || "Not set"}
               </span>
-
             </div>
-
           </div>
 
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              className="profile-edit-btn"
+              disabled={saving}
+              onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+            >
+              {saving
+                ? "Saving..."
+                : isEditing
+                ? "✓ Save Profile"
+                : "✏️ Edit Profile"}
+            </button>
 
-          <button
-            className="profile-edit-btn"
-            onClick={() =>
-              isEditing
-                ? handleSave()
-                : setIsEditing(true)
-            }
-          >
-            {isEditing
-              ? "✓ Save Profile"
-              : "✏️ Edit Profile"}
-          </button>
-
+            {profileExists && (
+              <button
+                className="profile-edit-btn"
+                style={{ background: "#dc2626" }}
+                disabled={deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? "Deleting..." : "🗑️ Delete Profile"}
+              </button>
+            )}
+          </div>
         </div>
 
+        {!profileExists && (
+          <p style={{ color: "#b8860b" }}>
+            You don't have a student profile yet. Fill in the details below
+            and click "Save Profile" to create one.
+          </p>
+        )}
 
-        {/* =================================
-            PROFILE GRID
+        {/* ================================= 
+            QUICK INFORMATION
         ================================= */}
 
         <div className="profile-main-grid">
-
-
-          {/* =================================
-              QUICK INFORMATION
-          ================================= */}
-
           <div className="profile-card quick-info-card">
-
             <div className="profile-card-title">
-
               <div>
                 <h2>Quick Information</h2>
-
-                <p>
-                  Your basic contact information
-                </p>
+                <p>Your basic contact information</p>
               </div>
-
-              <span className="card-icon">
-                👤
-              </span>
-
+              <span className="card-icon">👤</span>
             </div>
-
 
             <div className="quick-info-list">
-
               <div className="quick-info-item">
-
-                <span className="info-icon">
-                  📧
-                </span>
-
+                <span className="info-icon">📧</span>
                 <div>
                   <small>Email Address</small>
-                  <strong>
-                    {profile.email}
-                  </strong>
+                  <strong>{currentUser?.email || "-"}</strong>
                 </div>
-
               </div>
 
-
               <div className="quick-info-item">
-
-                <span className="info-icon">
-                  📱
-                </span>
-
+                <span className="info-icon">📱</span>
                 <div>
                   <small>Phone Number</small>
-                  <strong>
-                    {profile.phone}
-                  </strong>
+                  <strong>{formData.phone || "-"}</strong>
                 </div>
-
               </div>
 
-
               <div className="quick-info-item">
-
-                <span className="info-icon">
-                  🏫
-                </span>
-
+                <span className="info-icon">🏫</span>
                 <div>
                   <small>Department</small>
-                  <strong>
-                    {profile.department}
-                  </strong>
+                  <strong>{formData.department || "-"}</strong>
                 </div>
-
               </div>
-
 
               <div className="quick-info-item">
-
-                <span className="info-icon">
-                  📅
-                </span>
-
+                <span className="info-icon">🎯</span>
                 <div>
-                  <small>Joined Year</small>
-                  <strong>
-                    {profile.joinedYear}
+                  <small>Role</small>
+                  <strong style={{ textTransform: "capitalize" }}>
+                    {currentUser?.role || "-"}
                   </strong>
                 </div>
-
               </div>
-
             </div>
-
           </div>
-
-
-          {/* =================================
-              ACADEMIC OVERVIEW
-          ================================= */}
-
-          <div className="profile-card academic-card">
-
-            <div className="profile-card-title">
-
-              <div>
-                <h2>Academic Overview</h2>
-
-                <p>
-                  Your current academic performance
-                </p>
-              </div>
-
-              <span className="card-icon">
-                🎓
-              </span>
-
-            </div>
-
-
-            <div className="academic-stats">
-
-              <div className="academic-stat">
-
-                <span>
-                  Current CGPA
-                </span>
-
-                <strong>
-                  {profile.cgpa}
-                </strong>
-
-              </div>
-
-
-              <div className="academic-stat">
-
-                <span>
-                  Attendance
-                </span>
-
-                <strong>
-                  86%
-                </strong>
-
-              </div>
-
-
-              <div className="academic-stat">
-
-                <span>
-                  Semester
-                </span>
-
-                <strong>
-                  {profile.semester}
-                </strong>
-
-              </div>
-
-            </div>
-
-
-            <div className="academic-progress">
-
-              <div className="progress-header">
-
-                <span>
-                  Academic Progress
-                </span>
-
-                <strong>
-                  72%
-                </strong>
-
-              </div>
-
-              <div className="profile-progress">
-
-                <div
-                  className="profile-progress-fill"
-                  style={{
-                    width: "72%",
-                  }}
-                ></div>
-
-              </div>
-
-              <small>
-                Keep going! You are making good progress.
-              </small>
-
-            </div>
-
-          </div>
-
         </div>
 
-
-        {/* =================================
-            PERSONAL INFORMATION
+        {/* ================================= 
+            PERSONAL / ACADEMIC INFORMATION (editable)
         ================================= */}
 
         <div className="profile-card personal-info-card">
-
           <div className="profile-card-title">
-
             <div>
-              <h2>Personal Information</h2>
-
-              <p>
-                Manage your personal and academic details
-              </p>
+              <h2>Academic & Personal Information</h2>
+              <p>Manage your student profile details</p>
             </div>
-
-            <span className="card-icon">
-              📋
-            </span>
-
+            <span className="card-icon">📋</span>
           </div>
 
-
           <div className="profile-form-grid">
-
-
             <div className="profile-form-group">
-
-              <label>
-                First Name
-              </label>
-
+              <label>Student ID</label>
               <input
                 type="text"
-                name="firstName"
-                value={profile.firstName}
-                disabled={!isEditing}
+                name="studentId"
+                value={formData.studentId}
+                disabled={!isEditing || profileExists}
                 onChange={handleChange}
+                placeholder="e.g. CSE2026001"
               />
-
             </div>
 
-
             <div className="profile-form-group">
-
-              <label>
-                Last Name
-              </label>
-
-              <input
-                type="text"
-                name="lastName"
-                value={profile.lastName}
-                disabled={!isEditing}
-                onChange={handleChange}
-              />
-
-            </div>
-
-
-            <div className="profile-form-group">
-
-              <label>
-                Email Address
-              </label>
-
-              <input
-                type="email"
-                name="email"
-                value={profile.email}
-                disabled={!isEditing}
-                onChange={handleChange}
-              />
-
-            </div>
-
-
-            <div className="profile-form-group">
-
-              <label>
-                Phone Number
-              </label>
-
+              <label>Phone Number</label>
               <input
                 type="text"
                 name="phone"
-                value={profile.phone}
+                value={formData.phone}
                 disabled={!isEditing}
                 onChange={handleChange}
+                placeholder="e.g. +91 98765 43210"
               />
-
             </div>
 
-
             <div className="profile-form-group">
-
-              <label>
-                Department
-              </label>
-
+              <label>Department</label>
               <input
                 type="text"
                 name="department"
-                value={profile.department}
+                value={formData.department}
                 disabled={!isEditing}
                 onChange={handleChange}
+                placeholder="e.g. Computer Engineering"
               />
-
             </div>
 
-
             <div className="profile-form-group">
-
-              <label>
-                Semester
-              </label>
-
+              <label>Branch</label>
               <input
                 type="text"
-                name="semester"
-                value={profile.semester}
+                name="branch"
+                value={formData.branch}
                 disabled={!isEditing}
                 onChange={handleChange}
+                placeholder="e.g. CSE"
               />
-
             </div>
 
+            <div className="profile-form-group">
+              <label>Semester</label>
+              <input
+                type="number"
+                name="semester"
+                value={formData.semester}
+                disabled={!isEditing}
+                onChange={handleChange}
+                placeholder="e.g. 5"
+              />
+            </div>
 
             <div className="profile-form-group">
-
-              <label>
-                Division
-              </label>
-
+              <label>Division</label>
               <input
                 type="text"
                 name="division"
-                value={profile.division}
+                value={formData.division}
                 disabled={!isEditing}
                 onChange={handleChange}
+                placeholder="e.g. A"
               />
-
             </div>
-
 
             <div className="profile-form-group">
-
-              <label>
-                CGPA
-              </label>
-
+              <label>Address</label>
               <input
                 type="text"
-                name="cgpa"
-                value={profile.cgpa}
+                name="address"
+                value={formData.address}
                 disabled={!isEditing}
                 onChange={handleChange}
+                placeholder="Your address"
               />
-
             </div>
-
           </div>
-
         </div>
-
-
-        {/* =================================
-            SKILLS
-        ================================= */}
-
-        <div className="profile-card skills-card">
-
-          <div className="profile-card-title">
-
-            <div>
-              <h2>
-                Skills & Interests
-              </h2>
-
-              <p>
-                Showcase your technical skills
-              </p>
-            </div>
-
-            <span className="card-icon">
-              🚀
-            </span>
-
-          </div>
-
-
-          <div className="skills-container">
-
-            {skills.map((skill) => (
-
-              <div
-                className="skill-tag"
-                key={skill}
-              >
-
-                <span>
-                  {skill}
-                </span>
-
-                {isEditing && (
-
-                  <button
-                    onClick={() =>
-                      removeSkill(skill)
-                    }
-                  >
-                    ×
-                  </button>
-
-                )}
-
-              </div>
-
-            ))}
-
-          </div>
-
-
-          {isEditing && (
-
-            <div className="add-skill">
-
-              <input
-                type="text"
-                placeholder="Add a skill..."
-                value={newSkill}
-                onChange={(e) =>
-                  setNewSkill(e.target.value)
-                }
-              />
-
-              <button
-                onClick={addSkill}
-              >
-                + Add Skill
-              </button>
-
-            </div>
-
-          )}
-
-        </div>
-
       </div>
-
     </DashboardLayout>
   );
 }
